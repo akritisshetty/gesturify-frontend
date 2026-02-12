@@ -4,6 +4,7 @@ export enum View {
   SPEECH_TO_ISL = 'SPEECH_TO_ISL',
   ISL_TO_SPEECH = 'ISL_TO_SPEECH',
   AI_COACH = 'AI_COACH',
+  ALPHABET_PAGE = 'ALPHABET_PAGE',
 }
 
 export interface Sign {

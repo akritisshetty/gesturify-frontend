@@ -31,8 +31,8 @@ const Header: React.FC<HeaderProps> = ({ view, setView }) => {
             <span className="text-xl font-bold text-text-primary">Gesturify</span>
           </div>
           <div className="hidden md:flex items-center space-x-6">
-            <NavLink onClick={() => setView(View.SPEECH_TO_ISL)} isActive={view === View.SPEECH_TO_ISL}>Speech to ISL</NavLink>
-            <NavLink onClick={() => setView(View.ISL_TO_SPEECH)} isActive={view === View.ISL_TO_SPEECH}>ISL to Speech</NavLink>
+            <NavLink onClick={() => setView(View.SPEECH_TO_ISL)} isActive={view === View.SPEECH_TO_ISL}>Text to ISL</NavLink>
+            <NavLink onClick={() => setView(View.ISL_TO_SPEECH)} isActive={view === View.ISL_TO_SPEECH}>ISL to Text</NavLink>
             <NavLink onClick={() => setView(View.AI_COACH)} isActive={view === View.AI_COACH}>AI Coach</NavLink>
           </div>
           <div className="flex md:hidden">

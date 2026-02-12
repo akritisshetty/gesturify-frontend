@@ -1,107 +1,166 @@
-import React, { useState, useCallback } from 'react';
-import { getLessonContent } from '../services/mockData';
-import type { Lesson, Sign } from '../types';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View } from '../types';
 
-const lessonTopics = [
-  { title: 'Greetings', icon: '👋' },
-  { title: 'Family', icon: '👨‍👩‍👧‍👦' },
-  { title: 'Common Questions', icon: '❓' },
-  { title: 'Days of the Week', icon: '🗓️' },
-  { title: 'Food & Drink', icon: '🍎' },
-  { title: 'Feelings', icon: '😊' },
-];
+// We'll classify a messy input string into Alphabets, Numbers, and Words.
+const RAW_INPUT = `1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 8
+9
+ A
+ B
+C
+D
+ E
+F
+G
+H
+HELLO
+,I,
+ J,K,L,,M,N
+,NAMASTE,O,P,Q,R,S,T,,U,V,X,Y,Z`;
 
-const LoadingSpinner: React.FC = () => (
-    <div className="flex justify-center items-center p-8">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+type Category = 'Alphabet' | 'Number' | 'Word';
+
+const classifyTokens = (raw: string) => {
+  // Normalize: replace commas with spaces, split on whitespace, trim
+  const tokens = raw
+    .replace(/[.,\/]+/g, ' ')
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const alphabets: string[] = [];
+  const numbers: string[] = [];
+  const words: string[] = [];
+
+  for (const token of tokens) {
+    if (/^\d+$/.test(token)) {
+      numbers.push(token);
+    } else if (/^[A-Za-z]$/.test(token)) {
+      alphabets.push(token.toUpperCase());
+    } else {
+      // anything longer than 1 char -> word
+      words.push(token.toUpperCase());
+    }
+  }
+
+  return { Alphabet: alphabets, Number: numbers, Word: words } as Record<Category, string[]>;
+};
+
+const Card: React.FC<{
+  title: Category;
+  items: string[];
+  onOpenCamera: (category: Category) => void;
+}> = ({ title, items, onOpenCamera }) => (
+  <button
+    onClick={() => onOpenCamera(title)}
+    className="p-4 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-200 text-left border-2 bg-white"
+  >
+    <div className="flex justify-between items-center">
+      <div>
+        <h3 className="font-semibold text-lg text-text-primary">{title}</h3>
+        <p className="text-sm text-text-secondary">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+      </div>
+      <div className="text-2xl">🔍</div>
     </div>
+    <div className="mt-3 text-sm text-text-secondary max-h-20 overflow-auto">
+      {items.length ? (
+        items.map((it, i) => (
+          <span key={i} className="inline-block mr-2 mb-1 px-2 py-1 bg-gray-100 rounded text-xs">{it}</span>
+        ))
+      ) : (
+        <span className="text-xs italic">No items</span>
+      )}
+    </div>
+  </button>
 );
 
-const SignDetail: React.FC<{ sign: Sign; style?: React.CSSProperties }> = ({ sign, style }) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-4 flex flex-col sm:flex-row items-start gap-4 animate-fadeIn" style={style}>
-        <div className="w-full sm:w-48 h-48 flex-shrink-0 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
-            {sign.imageUrl ? (
-                <img src={sign.imageUrl} alt={`Indian Sign Language for ${sign.name}`} className="w-full h-full object-cover" />
-            ) : (
-                <div className="w-full h-full bg-gray-200 animate-pulse"></div>
-            )}
+const CameraModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  category?: Category | null;
+}> = ({ open, onClose, category }) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    const start = async () => {
+      if (!open) return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      } catch (err) {
+        console.error('Camera error', err);
+      }
+    };
+
+    start();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) videoRef.current.srcObject = null;
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h4 className="font-bold">{category} Camera</h4>
+          <button onClick={onClose} className="text-sm px-3 py-1 rounded bg-gray-100">Close</button>
         </div>
-        <div className="flex-grow">
-            <h4 className="font-bold text-primary text-xl">{sign.name}</h4>
-            <p className="text-text-secondary mt-2 whitespace-pre-wrap">{sign.description}</p>
+        <div className="p-4">
+          <video ref={videoRef} autoPlay playsInline className="w-full h-64 bg-black rounded" />
+          <p className="mt-3 text-sm text-text-secondary">Point the camera to practice {category?.toLowerCase()} signs.</p>
         </div>
+      </div>
     </div>
-);
+  );
+};
 
-const AICoach: React.FC = () => {
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const AICoach: React.FC<{ setView: (v: View) => void }> = ({ setView }) => {
+  const classified = classifyTokens(RAW_INPUT);
 
-  const fetchLesson = useCallback(async (topic: string) => {
-    if (selectedTopic === topic && lesson) {
-        setSelectedTopic(null); // Allow collapsing the view
-        setLesson(null);
-        return;
-    }
-    setSelectedTopic(topic);
-    setIsLoading(true);
-    setError(null);
-    setLesson(null);
-    try {
-      const lessonData = await getLessonContent(topic);
-      setLesson(lessonData);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load lesson. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedTopic, lesson]);
+  const [cameraOpenFor, setCameraOpenFor] = useState<Category | null>(null);
+
+  const handleOpenCamera = (cat: Category) => {
+    setCameraOpenFor(cat);
+  };
+
+  const handleCloseCamera = () => setCameraOpenFor(null);
 
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold text-text-primary">AI-Powered ISL Coach</h2>
-        <p className="text-text-secondary mt-2">Select a topic to start your interactive learning journey.</p>
+        <p className="text-text-secondary mt-2">Click a card to open the camera and practise.</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {lessonTopics.map((topic) => (
+      <div className="grid grid-cols-1 sm:grid-cols-1">
+        <div>
           <button
-            key={topic.title}
-            onClick={() => fetchLesson(topic.title)}
-            className={`p-4 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all duration-200 text-center border-2 ${
-                selectedTopic === topic.title
-                    ? 'border-primary ring-2 ring-primary/50 bg-primary/10'
-                    : 'bg-white border-transparent hover:border-gray-300'
-            }`}
+            onClick={() => setView(View.ALPHABET_PAGE)}
+            className="w-full h-full"
+            aria-label="Open Alphabet page"
           >
-            <div className="text-3xl mb-2">{topic.icon}</div>
-            <h3 className="font-semibold text-md text-text-primary">{topic.title}</h3>
+            <Card title="Alphabet" items={classified.Alphabet} onOpenCamera={() => {}} />
           </button>
-        ))}
+        </div>
+
+        
       </div>
 
-      {selectedTopic && (
-        <div className="mt-8 p-6 bg-white rounded-lg shadow-md border border-gray-200">
-          <h3 className="text-2xl font-bold text-text-primary mb-4 text-center">Lesson: {selectedTopic}</h3>
-          {isLoading && <LoadingSpinner />}
-          {error && <p className="text-center text-red-500">{error}</p>}
-          {lesson && (
-              <div>
-                  {lesson.signs.map((sign, index) => (
-                      <SignDetail 
-                        key={index} 
-                        sign={sign} 
-                        style={{ animationDelay: `${index * 150}ms`, opacity: 0 }}
-                      />
-                  ))}
-              </div>
-          )}
-        </div>
-      )}
+      <CameraModal open={!!cameraOpenFor} onClose={handleCloseCamera} category={cameraOpenFor} />
     </div>
   );
 };

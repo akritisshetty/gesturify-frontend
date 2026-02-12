@@ -5,6 +5,7 @@ import Hero from './components/Hero';
 import SpeechToISL from './components/SpeechToISL';
 import ISLToSpeech from './components/ISLToSpeech';
 import AICoach from './components/AICoach';
+import AlphabetPage from './components/AlphabetPage';
 import Footer from './components/Footer';
 
 const App: React.FC = () => {
@@ -17,7 +18,9 @@ const App: React.FC = () => {
       case View.ISL_TO_SPEECH:
         return <ISLToSpeech />;
       case View.AI_COACH:
-        return <AICoach />;
+        return <AICoach setView={setView} />;
+      case View.ALPHABET_PAGE:
+        return <AlphabetPage setView={setView} />;
       case View.HOME:
       default:
         return <Hero setView={setView} />;

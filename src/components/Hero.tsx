@@ -60,14 +60,14 @@ const Hero: React.FC<HeroProps> = ({ setView }) => {
       <div className="grid md:grid-cols-3 gap-8">
         <Feature
           icon={<MicrophoneIcon />}
-          title="Speech to ISL"
-          description="Convert spoken words into real-time ISL gesture animations."
+          title="Text to ISL"
+          description="Converts natural langauge into real-time ISL gesture animations."
           action={() => setView(View.SPEECH_TO_ISL)}
         />
         <Feature
           icon={<VideoCameraIcon />}
-          title="ISL to Speech"
-          description="Use your webcam to translate ISL gestures into spoken language."
+          title="ISL to Text"
+          description="Use your webcam to translate ISL gestures into natural language."
           action={() => setView(View.ISL_TO_SPEECH)}
         />
         <Feature
